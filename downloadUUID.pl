@@ -1,4 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
+# Copied directly from https://annai.egnyte.com/dl/6gGNAqsGsL
+use strict;
+use warnings;
+
  
 local $ENV{PATH} = "$ENV{PATH}:/usr/bin";
  
