@@ -10,7 +10,7 @@ my $noverify = 0;
 my $threads = 1;
 my $verbose = 1;
 my $ratelimit = 25;   # 25 MB/s (suggestion from John Groboske 1/7/14)
-my $maxdelay = 120;   # max seconds to delay before starting download
+my $maxdelay = 60;    # total delay will be randomly selected between $maxdelay to $maxdelay*2 (60 to 120 secs)
 GetOptions ("analysisid|a=s" => \$aid,
             "testonly|t"     => \$test,
             "help|h"         => \$help,
@@ -43,8 +43,9 @@ if ($test) {
   while ($tryCount < $tryLimit) {
     $tryCount++;
 
-    # random delay so that parallel instances of this script won't ping cghub servers to quickly
-    my $delay = 0 + int(rand($maxdelay));
+    # random delay between 60 and 120 seconds so that parallel instances of this script won't ping cghub servers to quickly
+    my $delay = 60 + int(rand($maxdelay));
+    if ($maxdelay == 0) { $delay = 0; }   # for running only one instance of script
     print "gt.pl: delaying $delay second(s)\n";
     sleep $delay;  
 
@@ -102,7 +103,7 @@ gt.pl - GeneTorrent wrapper
     -c|threads        Number of cpu cores (called --max-children by GeneTorrent) (default: 1)
     -v|verbose        Display progress every 5 seconds to stdout (default: on)
     -y|noverify       Specify that GT should not verify the SSL certificates (default: off)
-    -d|maxdelay       Maximum random seconds to delay before starting download (default: 120)
+    -d|maxdelay       Randomly delay start of download between MAXDELAY and MAXDELAY*2 (default: 60)
     -t|test           Show command that would be executed
     -h|help
 
