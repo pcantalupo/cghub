@@ -10,7 +10,7 @@ my $noverify = 0;
 my $threads = 1;
 my $verbose = 1;
 my $ratelimit = 25;   # 25 MB/s (suggestion from John Groboske 1/7/14)
-
+my $maxdelay = 120;   # max seconds to delay before starting download
 GetOptions ("analysisid|a=s" => \$aid,
             "testonly|t"     => \$test,
             "help|h"         => \$help,
@@ -18,6 +18,7 @@ GetOptions ("analysisid|a=s" => \$aid,
             "threads|c=i"    => \$threads,
             "verbose|v"      => \$verbose,
             "ratelimit|r=i"  => \$ratelimit,
+            "maxdelay|d=i"   => \$maxdelay,
 );
 
 exec('perldoc', $0) if $help;
@@ -32,16 +33,23 @@ $command .= " --ssl-no-verify-ca" if ($noverify);
 $command .= " --max-children $threads";
 #$command .= " --rate-limit $ratelimit";
 
+my $exitval = 0;
 if ($test) {
   print "Command to run: $command\n";
 } else {
   my $tryLimit = 3;
   my $tryCount = 0;
+  my $rc;
   while ($tryCount < $tryLimit) {
     $tryCount++;
 
+    # random delay so that parallel instances of this script won't ping cghub servers to quickly
+    my $delay = 0 + int(rand($maxdelay));
+    print "gt.pl: delaying $delay second(s)\n";
+    sleep $delay;  
+
     # download data (with one retry)
-    my $rc = &downloadObject($aid, $command);
+    $rc = &downloadObject($aid, $command);
     if ($rc) {
       print "Failed downloading data for $aid\n";
       sleep 10 && next; # always wait 10 seconds before next download attempt
@@ -50,13 +58,16 @@ if ($test) {
       last; # successful download
     }
   }
+
+  $exitval = $rc;
 }
 
-exit 0;
+exit $exitval;
+
 
 # Args:   $aid - analysis UUID
 #         $command - gtdownload command to execute
-# Return: 0 on success, -1 failure
+# Return: 0 on success, 1 failure
 sub downloadObject {
   my ($aid, $command) = @_;
 
@@ -71,7 +82,7 @@ sub downloadObject {
     my $rc = system $command;
     if ($?) {
       print "ERROR downloading $aid rc = $rc and error = $?\n";
-      return -1;
+      return 1;
     }
   }
 
@@ -90,8 +101,8 @@ gt.pl - GeneTorrent wrapper
     -a|analysisid     Analysis object ID (i.e. 36fbc8a1-0cea-4ceb-ae61-3a026b613f5e)
     -c|threads        Number of cpu cores (called --max-children by GeneTorrent) (default: 1)
     -v|verbose        Display progress every 5 seconds to stdout (default: on)
-    -r|ratelimit      Limit network transfer rate (Millions of Bytes MB/s; default 25)
     -y|noverify       Specify that GT should not verify the SSL certificates (default: off)
+    -d|maxdelay       Maximum random seconds to delay before starting download (default: 120)
     -t|test           Show command that would be executed
     -h|help
 
